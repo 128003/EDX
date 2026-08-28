@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NCS / EMG 報告文字產生器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101A26; --ink-2:#3D4C5C; --paper:#EDF0F2; --panel:#FFFFFF;
+  --line:#CFD8DE; --line-2:#E5EAEE; --blue:#1F4E79; --teal:#146B63;
+  --flag:#A4262C; --flag-bg:#FBEDED; --amber:#8A6100; --amber-bg:#FCF4E2;
+  --focus:#1F4E79;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --disp:'Barlow Condensed','Noto Sans TC',sans-serif;
+  --body:'Noto Sans TC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+.masthead{border-bottom:2px solid var(--ink);padding:26px 0 14px}
+.masthead-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.title{font-family:var(--disp);font-size:38px;line-height:1;letter-spacing:.01em;font-weight:700;margin:0;text-transform:uppercase}
+.title .zh{font-family:var(--body);font-size:17px;font-weight:500;letter-spacing:.02em;display:block;text-transform:none;color:var(--ink-2);margin-top:6px}
+.formcode{font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.06em;text-align:right}
+.disclaim{font-size:12.5px;color:var(--flag);background:var(--flag-bg);border:1px solid #EBCFCF;border-left:3px solid var(--flag);padding:8px 12px;margin:14px 0 0}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin:22px 0 26px;flex-wrap:wrap}
+.tab{appearance:none;background:none;border:none;border-bottom:3px solid transparent;font-family:var(--body);font-size:14px;font-weight:500;color:var(--ink-2);padding:11px 16px;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+.tab .n{font-family:var(--mono);font-size:11px;color:#8A98A5}
+.tab:hover{color:var(--ink);background:#E4E9EC}
+.tab[aria-selected="true"]{color:var(--blue);border-bottom-color:var(--blue);font-weight:700}
+.tab[aria-selected="true"] .n{color:var(--blue)}
+.tab:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.panel[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--line);padding:20px 22px;margin-bottom:20px}
+.card h2{font-family:var(--disp);font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:.02em;text-transform:uppercase}
+.card h2 .zh{font-family:var(--body);font-size:14px;font-weight:500;color:var(--ink-2);margin-left:10px;letter-spacing:0;text-transform:none}
+.hint{font-size:13px;color:var(--ink-2);margin:0 0 14px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:0 0 6px}
+textarea{width:100%;font-family:var(--mono);font-size:12.5px;line-height:1.65;border:1px solid var(--line);padding:12px;background:#FBFCFC;color:var(--ink);resize:vertical}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--focus);outline-offset:-1px}
+button.act{appearance:none;font-family:var(--body);font-size:14px;font-weight:500;background:var(--blue);color:#fff;border:1px solid var(--blue);padding:9px 18px;cursor:pointer}
+button.act:hover{background:#173C5D}
+button.ghost{background:none;color:var(--blue);border:1px solid var(--line)}
+button.ghost:hover{background:#E9EEF3;color:var(--blue)}
+button.tiny{font-size:12px;padding:5px 10px}
+button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.drop{border:2px dashed var(--line);background:#FAFCFD;padding:26px 20px;text-align:center;cursor:pointer;margin-bottom:16px}
+.drop:hover,.drop.over{border-color:var(--blue);background:#EDF4FA}
+.drop .big{font-family:var(--disp);font-size:20px;letter-spacing:.02em;text-transform:uppercase;color:var(--blue)}
+.drop .sm{font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.tablewrap{overflow-x:auto;margin-top:6px}
+table.data{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px}
+table.data th,table.data td{border:1px solid var(--line-2);padding:0;text-align:center}
+table.data thead th{background:#F4F7F8;font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);padding:6px 4px;white-space:nowrap}
+table.data thead tr.grp th{border-bottom:1px solid var(--line);color:var(--blue)}
+table.data td.lbl{text-align:left;padding:4px 10px;font-family:var(--body);font-size:13px;white-space:nowrap;background:#FAFBFC}
+table.data input.cell{width:100%;border:none;background:transparent;font-family:var(--mono);font-size:12.5px;text-align:center;padding:6px 2px;color:var(--ink)}
+td.abn{background:var(--flag-bg)}
+td.abn input.cell{color:var(--flag);font-weight:600}
+td.trace{box-shadow:inset 0 0 0 2px var(--blue);background:#E7F0F8}
+td.trace.abn{background:#F7E3E4;box-shadow:inset 0 0 0 2px var(--flag)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:10px}
+.legend span::before{content:"";display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-abn::before{background:var(--flag-bg);border-color:#E0BEBE}
+.legend .l-nr::before{background:#F4F7F8}
+table.emg{border-collapse:collapse;width:100%;font-size:13px}
+table.emg th{background:#F4F7F8;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);padding:7px 6px;border:1px solid var(--line-2);white-space:nowrap}
+table.emg td{border:1px solid var(--line-2);padding:3px 4px}
+table.emg select,table.emg input{width:100%;border:1px solid transparent;background:transparent;font-family:var(--body);font-size:13px;padding:5px 4px;color:var(--ink)}
+table.emg select:hover,table.emg input:hover{border-color:var(--line)}
+table.emg input.mus{font-family:var(--mono);font-weight:600}
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:900px){.report-grid{grid-template-columns:1fr}}
+ul.findings{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+ul.findings li.sec{font-family:var(--body);font-weight:700;font-size:13.5px;margin:14px 0 4px;color:var(--blue);border-bottom:1px solid var(--line-2);padding-bottom:3px}
+ul.findings li.sec:first-child{margin-top:0}
+ul.findings li.line{padding:3px 8px;border-left:3px solid transparent}
+ul.findings li.line[data-refs]{cursor:pointer}
+ul.findings li.line[data-refs]:hover{background:#E7F0F8;border-left-color:var(--blue)}
+.traced-note{font-size:12px;color:var(--ink-2);margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.cand{border:1px solid var(--line);border-left:4px solid var(--teal);padding:12px 14px;margin-bottom:12px;background:#FBFCFC}
+.cand.low{border-left-color:var(--amber)}
+.cand-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.cand-txt{font-family:var(--mono);font-size:12.5px;line-height:1.6;flex:1}
+.cand-why{font-size:12px;color:var(--ink-2);margin-top:8px}
+.cand-why b{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:600;display:block;margin-bottom:2px}
+.cand.low .cand-why b{color:var(--amber)}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border:1px solid currentColor;color:var(--teal);white-space:nowrap}
+.cand.low .badge{color:var(--amber)}
+.sts{border:1px solid var(--line);padding:12px 14px;background:#FBFCFC;font-size:13px}
+.sts table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px;margin-top:6px}
+.sts td,.sts th{border-bottom:1px solid var(--line-2);padding:5px 8px;text-align:right}
+.sts th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.sts td:first-child,.sts th:first-child{text-align:left}
+.sts .drp{color:var(--flag);font-weight:600}
+.msg{font-size:13px;padding:9px 12px;margin-top:12px;border:1px solid var(--line)}
+.msg.ok{background:#EAF3EE;border-color:#BFD8CA;color:var(--teal)}
+.msg.warn{background:var(--amber-bg);border-color:#E6D5A8;color:var(--amber)}
+.msg.err{background:var(--flag-bg);border-color:#EBCFCF;color:var(--flag)}
+.msg[hidden]{display:none}
+table.nv{border-collapse:collapse;width:100%;font-size:13px}
+table.nv th{background:#F4F7F8;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);padding:7px 8px;border:1px solid var(--line-2);text-align:left}
+table.nv td{border:1px solid var(--line-2);padding:2px 6px}
+table.nv td.k{font-family:var(--mono);font-size:12.5px;padding:6px 8px;background:#FAFBFC;white-space:nowrap}
+table.nv td.k small{font-family:var(--body);color:var(--ink-2);font-size:11.5px;display:block}
+table.nv input{width:100%;border:1px solid transparent;background:transparent;font-family:var(--mono);font-size:12.5px;padding:5px 6px;text-align:right;color:var(--ink)}
+table.nv input:hover{border-color:var(--line)}
+.nv-note{font-size:12.5px;color:var(--teal);background:#EAF3EE;border:1px solid #BFD8CA;padding:10px 12px;margin-bottom:16px}
+.nv-warn{font-size:12.5px;color:var(--amber);background:var(--amber-bg);border:1px solid #E6D5A8;padding:10px 12px;margin-bottom:16px}
+footer{margin-top:30px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="masthead-row">
+    <h1 class="title">NCS / EMG Report Builder
+      <span class="zh">神經傳導與肌電圖 — Findings 與 Conclusion 文字產生器</span>
+    </h1>
+    <div class="formcode">FORM MR-S9-045<br>正常值:羅東博愛醫院復健科<br>v2.0 · 純前端運算</div>
+  </div>
+  <p class="disclaim">本工具產生的是<b>草稿</b>,判讀完全依照「正常值設定」分頁的 cut-off。文字送出前必須由醫師逐條確認。所有運算在瀏覽器內完成,不上傳伺服器;解析時只讀數值表格,姓名、病歷號、身分證號一律略過。</p>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" id="t1" aria-controls="p1" aria-selected="true"><span class="n">01</span>匯入報告</button>
+  <button class="tab" role="tab" id="t2" aria-controls="p2" aria-selected="false"><span class="n">02</span>核對數值</button>
+  <button class="tab" role="tab" id="t3" aria-controls="p3" aria-selected="false"><span class="n">03</span>產生文字</button>
+  <button class="tab" role="tab" id="t4" aria-controls="p4" aria-selected="false"><span class="n">04</span>正常值設定</button>
+</nav>
+
+<!-- ============ 01 IMPORT ============ -->
+<section class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+  <div class="card">
+    <h2>Import<span class="zh">丟 PDF 進來,或貼上文字</span></h2>
+    <div class="drop" id="dropzone" tabindex="0" role="button" aria-label="選擇或拖曳報告檔案">
+      <div class="big">拖曳 PDF 到這裡</div>
+      <div class="sm">或點一下選檔 · 支援 .pdf(建議)與 .png/.jpg 截圖(需 OCR,準確度較低)</div>
+    </div>
+    <input type="file" id="fileIn" accept=".pdf,image/png,image/jpeg" hidden>
+    <p class="hint">PDF 走文字層直接讀,數字不會錯。截圖走 OCR,只在拿不到 PDF 時用,而且一定要在下一頁逐格核對。</p>
+    <textarea id="raw" rows="14" placeholder="也可以直接把 PDF 全選複製,貼在這裡…"></textarea>
+    <div class="btnrow">
+      <button class="act" id="btnParse">解析</button>
+      <button class="ghost act" id="btnSample">載入範例(去識別化)</button>
+      <button class="ghost act" id="btnClear">清空</button>
+    </div>
+    <div class="msg" id="parseMsg" hidden></div>
+  </div>
+</section>
+
+<!-- ============ 02 VERIFY ============ -->
+<section class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+  <div class="card">
+    <h2>Motor NCS<span class="zh">運動神經傳導 — 可直接修改</span></h2>
+    <p class="hint">紅底代表超出 cut-off。任何一格都能改,改完即時重算。<code>NR</code> = no pick up。</p>
+    <div class="tablewrap"><table class="data" id="tblMotor"></table></div>
+    <div class="legend"><span class="l-abn">超出 cut-off</span><span class="l-nr">欄位標題</span></div>
+  </div>
+  <div class="card">
+    <h2>Sensory NCS<span class="zh">感覺神經傳導</span></h2>
+    <p class="hint">貴院感覺正常值用的是 <b>peak latency</b>。若儀器輸出的是 onset latency,潛時那一欄的比對要自行斟酌。</p>
+    <div class="tablewrap"><table class="data" id="tblSensory"></table></div>
+  </div>
+  <div class="card">
+    <h2>Needle EMG<span class="zh">針極肌電圖 — 請逐列確認</span></h2>
+    <p class="hint">EMG 在 PDF 裡欄位常跑掉,解析結果只是初稿。</p>
+    <div class="tablewrap"><table class="emg" id="tblEmg"></table></div>
+    <div class="btnrow"><button class="ghost act tiny" id="btnAddEmg">＋ 新增肌肉</button></div>
+  </div>
+  <div class="card">
+    <h2>Side-to-side<span class="zh">兩側振幅比對</span></h2>
+    <p class="hint">患側對健側的掉幅。radial palsy、facial palsy 這類,絕對值可能還在範圍內,兩側落差才是重點。</p>
+    <div class="sts" id="stsBox"></div>
+  </div>
+</section>
+
+<!-- ============ 03 REPORT ============ -->
+<section class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+  <div class="report-grid">
+    <div class="card">
+      <h2>Findings<span class="zh">自動產生</span></h2>
+      <p class="hint">游標移到任一條上面,上一頁對應的數值格會亮起來 — 用來回頭核對這句話是哪些數字推出來的。</p>
+      <ul class="findings" id="findList"></ul>
+      <p class="traced-note" id="traceNote">規則來源:正常值設定分頁。</p>
+      <div class="btnrow">
+        <button class="act" id="btnCopyFind">複製 Findings</button>
+        <button class="ghost act" id="btnRecalc">重新計算</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Conclusion<span class="zh">候選建議 — 請自行取捨</span></h2>
+      <p class="hint">以下每一則都只是型態比對,不是診斷。點「採用」會貼進下面的框。</p>
+      <div id="candList"></div>
+      <p class="eyebrow" style="margin-top:18px">最終 conclusion</p>
+      <textarea id="conclBox" rows="6" placeholder="點上面的「採用」,或直接自己寫…"></textarea>
+      <div class="btnrow">
+        <button class="act" id="btnCopyConcl">複製 Conclusion</button>
+        <button class="ghost act" id="btnClearConcl">清空</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Full text<span class="zh">整份輸出</span></h2>
+    <textarea id="fullBox" rows="16"></textarea>
+    <div class="btnrow"><button class="act" id="btnCopyAll">複製全文</button></div>
+    <div class="msg ok" id="copyMsg" hidden>已複製到剪貼簿。</div>
+  </div>
+</section>
+
+<!-- ============ 04 NORMAL VALUES ============ -->
+<section class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+  <div class="card">
+    <h2>Normal values<span class="zh">正常值設定</span></h2>
+    <p class="nv-note">已載入貴院「Normal Values for Nerve Conduction Studies, Division of PM&amp;R, Lo-Hsu Medical Foundation Lotung Poh-Ai Hospital」表中的 cut-off 值。</p>
+    <p class="nv-warn">兩點請你確認:<b>(1)</b> Median motor distal latency 那格在正本上有手寫塗改,我先填 3.5 ms。<b>(2)</b> F-wave 我依背面透出的字判讀為上肢 &lt;30 ms、下肢 &lt;50 ms,那頁字是反的,不完全確定。這兩項若有出入,直接在下面改。</p>
+    <p class="eyebrow">Motor</p>
+    <table class="nv" id="nvMotor"></table>
+    <p class="eyebrow" style="margin-top:22px">Motor — 節段 NCV cut-off (m/s)</p>
+    <table class="nv" id="nvSeg"></table>
+    <p class="eyebrow" style="margin-top:22px">Sensory</p>
+    <table class="nv" id="nvSensory"></table>
+    <p class="eyebrow" style="margin-top:22px">其他判讀門檻</p>
+    <table class="nv" id="nvMisc"></table>
+    <div class="btnrow">
+      <button class="act" id="btnExportNV">匯出設定 (JSON)</button>
+      <button class="ghost act" id="btnImportNV">匯入設定</button>
+      <button class="ghost act" id="btnResetNV">回復預設</button>
+      <input type="file" id="fileNV" accept="application/json" hidden>
+    </div>
+    <div class="msg" id="nvMsg" hidden></div>
+  </div>
+</section>
+
+<footer>單一 HTML 檔,可直接放 GitHub Pages。PDF 解析用 pdf.js、截圖 OCR 用 tesseract.js,兩者都在瀏覽器端執行,檔案不會離開這台電腦。</footer>
+</div>
+
+<script>
+"use strict";
+
+/* =======================================================================
+   NORMAL VALUES — 羅東博愛醫院復健科
+   motor:   dml 上限(ms) / amp 下限(mV) / ncv 預設下限(m/s) / f 上限(ms)
+            seg: 依 site 關鍵字覆寫的節段 NCV 下限
+   sensory: dsl 上限(ms, peak) / amp 下限(µV) / ncv 下限(m/s)
+   ======================================================================= */
+const DEFAULT_NV = {
+  motor: {
+    "Median":   {dml:3.5, amp:6.1, ncv:46.4, f:30,
+                 seg:{"axilla":48.7, "erb":54.1}},
+    "Ulnar":    {dml:2.7, amp:5.4, ncv:48.3, f:30,
+                 seg:{"above elbow":41.9, "across":41.9, "axilla":50.1, "erb":53.5}},
+    "Radial":   {dml:null, amp:null, ncv:50, f:30, seg:{}},
+    "Peroneal": {dml:4.6, amp:3.7, ncv:42.2, f:50, seg:{}},
+    "Tibial":   {dml:5.1, amp:5.5, ncv:42.8, f:50, seg:{}},
+    "Facial":   {dml:null, amp:null, ncv:null, f:null, seg:{}}
+  },
+  sensory: {
+    "Median-Palm":  {dsl:null, amp:15.6, ncv:40.1, note:"finger–palm 段"},
+    "Median-Wrist": {dsl:3.2,  amp:15.6, ncv:38.7, note:"palm–wrist 跨腕段"},
+    "Median-Elbow": {dsl:null, amp:19.2, ncv:51.3, note:"wrist–elbow 段"},
+    "Ulnar-Wrist":  {dsl:2.7,  amp:8.9,  ncv:41.0, note:"finger–wrist 段"},
+    "Ulnar-Elbow":  {dsl:null, amp:16.2, ncv:48.4, note:"wrist–elbow 段"},
+    "Radial":       {dsl:null, amp:12.5, ncv:45.4, note:""},
+    "Sural":        {dsl:4.4,  amp:6.7,  ncv:40,   note:"平均 3.6±0.4"}
+  },
+  misc: {stsDrop:50, elbowDrop:10, polyNerveCount:4}
+};
+let NV = structuredClone(DEFAULT_NV);
+const NV_LABEL = {dml:"DML 上限 (ms)",amp:"Amp 下限",ncv:"NCV 下限 (m/s)",f:"F 上限 (ms)",dsl:"Peak latency 上限 (ms)"};
+
+let state = {motor:[], sensory:[], emg:[]};
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const isNum = v => typeof v === "number" && !isNaN(v);
+const NR = "NR";
+
+function sideWord(R,L){ return R&&L ? "bilateral" : R ? "right" : L ? "left" : ""; }
+function phrase(items){
+  if(!items.length) return "";
+  // 側別相同的神經合併:bilateral median and ulnar nerves
+  const groups=[];
+  items.forEach(it=>{
+    const w=sideWord(it.R,it.L);
+    const g=groups.find(x=>x.w===w);
+    if(g) g.labels.push(it.label); else groups.push({w,labels:[it.label]});
+  });
+  const parts = groups.map(g=>{
+    const l = g.labels.length===1 ? g.labels[0]
+      : g.labels.slice(0,-1).join(", ") + " and " + g.labels[g.labels.length-1];
+    return g.w + " " + l;
+  });
+  const plural = items.length>1 || (items[0].R && items[0].L);
+  const body = parts.length===1 ? parts[0]
+    : parts.slice(0,-1).join(", ") + " and " + parts[parts.length-1];
+  return body + " nerve" + (plural?"s":"");
+}
+
+/* =======================================================================
+   PARSER
+   ======================================================================= */
+const MOTOR_NERVES = ["Median","Ulnar","Radial","Peroneal","Tibial","Facial","Musculocutaneous","Axillary"];
+const SENS_NERVES  = ["Median","Ulnar","Radial","Sural","Superficial peroneal","Lateral antebrachial","Medial antebrachial"];
+
+function tokenizeValues(s){
+  s = s.replace(/no\s*pick[\s-]*up/gi," ¤ ").replace(/\bNP\b/g," ¤ ").replace(/\bNR\b/g," ¤ ");
+  const out=[]; const re=/¤|\d+(?:\.\d+)?/g; let m;
+  while((m=re.exec(s))) out.push(m[0]==="¤"?NR:parseFloat(m[0]));
+  return out;
+}
+function pairUp(t){
+  const p=[];
+  for(let i=0;i<t.length;i+=2) p.push({R:t[i]??null, L:t[i+1]??null});
+  return p;
+}
+const DISTAL_RE = /wrist|ankle|forearm|palm|plam|orbicular/i;
+
+function parseMotorLine(line){
+  const nerve = MOTOR_NERVES.find(n=>new RegExp("^\\s*"+n+"\\b","i").test(line));
+  if(!nerve) return null;
+  const rest = line.replace(new RegExp("^\\s*"+nerve,"i"),"").trim();
+  const cut = rest.search(/(\d|no\s*pick)/i);
+  const site = (cut>0?rest.slice(0,cut):"").trim().replace(/[:：]$/,"");
+  const tokens = tokenizeValues(cut>=0?rest.slice(cut):"");
+  if(tokens.length<2) return null;
+  const p = pairUp(tokens);
+  const distal = DISTAL_RE.test(site) || site==="";
+  const row = {nerve, site, onset:p[0]||{R:null,L:null}, amp:p[1]||{R:null,L:null},
+               dist:p[2]||{R:null,L:null}, ncv:{R:null,L:null}, f:{R:null,L:null}, distal};
+  if(distal) row.f = p[3]||{R:null,L:null};
+  else { row.ncv = p[3]||{R:null,L:null}; row.f = p[4]||{R:null,L:null}; }
+  return row;
+}
+function parseSensoryLine(line){
+  const nerve = SENS_NERVES.find(n=>new RegExp("^\\s*"+n+"\\b","i").test(line));
+  if(!nerve) return null;
+  const rest = line.replace(new RegExp("^\\s*"+nerve,"i"),"").trim();
+  const cut = rest.search(/(\d|no\s*pick)/i);
+  let site = (cut>0?rest.slice(0,cut):"").trim().replace(/^[-–—]\s*/,"").replace(/[:：]$/,"");
+  if(/plam|palm/i.test(site)) site="Palm";
+  site = site ? site.charAt(0).toUpperCase()+site.slice(1).toLowerCase() : "";
+  const tokens = tokenizeValues(cut>=0?rest.slice(cut):"");
+  if(tokens.length<2) return null;
+  const p = pairUp(tokens);
+  return {nerve, site, key: site ? nerve+"-"+site : nerve,
+          onset:p[0]||{R:null,L:null}, amp:p[1]||{R:null,L:null},
+          dist:p[2]||{R:null,L:null}, ncv:p[3]||{R:null,L:null}};
+}
+function parseEmgLine(line){
+  const m = line.match(/^\s*([A-Za-z][A-Za-z0-9.\/ ]*?)[\s-]+(Lt|Rt|Left|Right|L|R)(?![A-Za-z])(.*)$/i);
+  if(!m) return null;
+  const muscle = m[1].trim();
+  if(!muscle || /^(muscle|insert|fib|nerve|median|ulnar|radial|onset)$/i.test(muscle)) return null;
+  const side = /^(lt|left|l)$/i.test(m[2]) ? "Lt":"Rt";
+  const rest = m[3];
+  const grades = rest.match(/\+{1,3}|(?<![\w<>])-(?![\d\w])/g) || [];
+  const g = i => grades[i] || "-";
+  return {muscle, side,
+    insert: /increas|↑/i.test(rest)?"increased":"normal",
+    fib:g(0), psw:g(1), fas:g(2),
+    poly: /poly/i.test(rest) || grades.length>3 ? "increased":"normal",
+    recruit: /scanty/i.test(rest)?"scanty" : /no\s*(muap|recruit)/i.test(rest)?"no MUAP"
+             : /(reduce|decreas|<\s*\d)/i.test(rest)?"reduced":"normal",
+    remark: /nascent/i.test(rest)?"nascent wave" : /giant/i.test(rest)?"giant wave":""};
+}
+function parseReport(text){
+  const lines = text.split(/\r?\n/);
+  let mode=""; const motor=[],sensory=[],emg=[];
+  for(const raw of lines){
+    const line = raw.replace(/\u3000/g," ").trim();
+    if(!line) continue;
+    if(/NEEDLE\s+ELECTRO/i.test(line)){ mode="emg"; continue; }
+    if(/Mot(o|or)\s+NCV/i.test(line)){ mode="motor"; continue; }
+    if(/Sensory\s+NCV/i.test(line)){ mode="sensory"; continue; }
+    if(/^(H\s*reflex|Findings|Conclusion|報告醫師)/i.test(line)){ mode=""; continue; }
+    if(/^(Muscle|Insert|Fib|Nerve-Site|Onset|R\s+L|Form:)/i.test(line)) continue;
+    if(mode==="motor"){ const r=parseMotorLine(line); if(r) motor.push(r); }
+    else if(mode==="sensory"){ const r=parseSensoryLine(line); if(r) sensory.push(r); }
+    else if(mode==="emg"){ const r=parseEmgLine(line); if(r) emg.push(r); }
+  }
+  return {motor,sensory,emg};
+}
+
+/* =======================================================================
+   FILE IMPORT — pdf.js / tesseract.js (lazy loaded)
+   ======================================================================= */
+const CDN = {
+  pdf:"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+  pdfWorker:"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+  tess:"https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"
+};
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)) return res();
+    const s=document.createElement("script"); s.src=src; s.onload=res;
+    s.onerror=()=>rej(new Error("載入失敗:"+src+"(可能是離線或防火牆擋住 CDN)")); document.head.appendChild(s);
+  });
+}
+async function pdfToText(file){
+  await loadScript(CDN.pdf);
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN.pdfWorker;
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({data:buf}).promise;
+  let out = "";
+  for(let p=1;p<=doc.numPages;p++){
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    // 依 y 座標把 text item 併回一行
+    const rows = new Map();
+    tc.items.forEach(it=>{
+      const y = Math.round(it.transform[5]);
+      let key = [...rows.keys()].find(k=>Math.abs(k-y)<=2);
+      if(key===undefined){ key=y; rows.set(key,[]); }
+      rows.get(key).push({x:it.transform[4], s:it.str});
+    });
+    [...rows.keys()].sort((a,b)=>b-a).forEach(y=>{
+      out += rows.get(y).sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim() + "\n";
+    });
+  }
+  return out;
+}
+async function imageToText(file, onProgress){
+  await loadScript(CDN.tess);
+  const r = await window.Tesseract.recognize(file,"eng",{
+    logger: m => { if(m.status==="recognizing text" && onProgress) onProgress(Math.round(m.progress*100)); }
+  });
+  return r.data.text;
+}
+async function handleFile(file){
+  const msg = $("#parseMsg");
+  try{
+    if(/pdf$/i.test(file.name) || file.type==="application/pdf"){
+      showMsg(msg,"正在讀取 PDF 文字層…","warn");
+      $("#raw").value = await pdfToText(file);
+      showMsg(msg,"PDF 文字已載入,按「解析」。","ok");
+    }else if(/^image\//.test(file.type)){
+      showMsg(msg,"截圖需要 OCR,第一次會下載辨識模型,請稍候…","warn");
+      $("#raw").value = await imageToText(file, p=>showMsg(msg,`OCR 辨識中 ${p}%…`,"warn"));
+      showMsg(msg,"OCR 完成。OCR 對小數點和 0/O、1/l 很容易看錯,解析後務必逐格核對。","warn");
+    }else{
+      showMsg(msg,"只吃 PDF 或 PNG/JPG。HEIC 瀏覽器讀不到,請先轉檔。","err");
+    }
+  }catch(err){ showMsg(msg,String(err.message||err),"err"); }
+}
+
+/* =======================================================================
+   ABNORMAL CHECKS
+   ======================================================================= */
+function segCut(nv,site){
+  if(!nv) return null;
+  const s=(site||"").toLowerCase();
+  for(const k in (nv.seg||{})) if(s.includes(k)) return nv.seg[k];
+  return nv.ncv;
+}
+function motorAbn(row,field,side){
+  const nv = NV.motor[row.nerve]; if(!nv) return false;
+  const v = row[field][side];
+  if(v===NR) return true;
+  if(!isNum(v)) return false;
+  if(field==="onset" && row.distal && isNum(nv.dml)) return v>nv.dml;
+  if(field==="amp" && row.distal && isNum(nv.amp)) return v<nv.amp;
+  if(field==="ncv"){ const c=segCut(nv,row.site); return isNum(c) && v<c; }
+  if(field==="f" && isNum(nv.f)) return v>nv.f;
+  return false;
+}
+function sensAbn(row,field,side){
+  const nv = NV.sensory[row.key] || NV.sensory[row.nerve]; if(!nv) return false;
+  const v = row[field][side];
+  if(v===NR) return true;
+  if(!isNum(v)) return false;
+  if(field==="onset" && isNum(nv.dsl)) return v>nv.dsl;
+  if(field==="amp" && isNum(nv.amp)) return v<nv.amp;
+  if(field==="ncv" && isNum(nv.ncv)) return v<nv.ncv;
+  return false;
+}
+
+/* =======================================================================
+   RENDER verify
+   ======================================================================= */
+const cellId=(k,i,f,s)=>`c-${k}-${i}-${f}-${s}`;
+const fmt=v=> v===NR?"NR":(v===null||v===undefined?"":v);
+const MOTOR_FIELDS=[{key:"onset",label:"Latency (ms)",check:1},{key:"amp",label:"Amp (mV)",check:1},
+  {key:"dist",label:"Dist (mm)",check:0},{key:"ncv",label:"NCV (m/s)",check:1},{key:"f",label:"F-wave (ms)",check:1}];
+const SENS_FIELDS=[{key:"onset",label:"Latency (ms)",check:1},{key:"amp",label:"Amp (µV)",check:1},
+  {key:"dist",label:"Dist (mm)",check:0},{key:"ncv",label:"NCV (m/s)",check:1}];
+
+function buildTable(el,kind,rows,fields,abnFn){
+  if(!rows.length){ el.innerHTML=`<tbody><tr><td class="lbl" style="color:var(--ink-2)">沒有資料。</td></tr></tbody>`; return; }
+  const head=`<thead><tr class="grp"><th rowspan="2">Nerve · Site</th>${fields.map(f=>`<th colspan="2">${f.label}</th>`).join("")}</tr>
+    <tr>${fields.map(()=>`<th>R</th><th>L</th>`).join("")}</tr></thead>`;
+  const body=rows.map((row,i)=>{
+    const tds=fields.map(f=>["R","L"].map(side=>{
+      const abn=f.check && abnFn(row,f.key,side);
+      return `<td class="${abn?"abn":""}" id="${cellId(kind,i,f.key,side)}"><input class="cell" value="${fmt(row[f.key][side])}"
+        data-kind="${kind}" data-i="${i}" data-f="${f.key}" data-s="${side}"
+        aria-label="${row.nerve} ${row.site} ${f.label} ${side}"></td>`;
+    }).join("")).join("");
+    return `<tr><td class="lbl">${row.nerve} <span style="color:var(--ink-2)">${row.site||""}</span></td>${tds}</tr>`;
+  }).join("");
+  el.innerHTML=head+"<tbody>"+body+"</tbody>";
+}
+const EMG_COLS=[{k:"muscle",t:"Muscle",type:"text"},{k:"side",t:"Side",type:"select",opt:["Lt","Rt"]},
+  {k:"insert",t:"Insertional",type:"select",opt:["normal","increased"]},
+  {k:"fib",t:"Fib",type:"select",opt:["-","+","++","+++"]},
+  {k:"psw",t:"PSW",type:"select",opt:["-","+","++","+++"]},
+  {k:"fas",t:"Fasc",type:"select",opt:["-","+","++"]},
+  {k:"poly",t:"Polyphasic",type:"select",opt:["normal","increased"]},
+  {k:"recruit",t:"Recruitment",type:"select",opt:["normal","reduced","scanty","no MUAP"]},
+  {k:"remark",t:"Remark",type:"text"}];
+function renderEmg(){
+  const head=`<thead><tr>${EMG_COLS.map(c=>`<th>${c.t}</th>`).join("")}<th></th></tr></thead>`;
+  const body=state.emg.map((r,i)=>`<tr>${EMG_COLS.map(c=>c.type==="text"
+    ? `<td><input class="${c.k==="muscle"?"mus":""}" value="${r[c.k]||""}" data-emg="${i}" data-k="${c.k}" aria-label="${c.t}"></td>`
+    : `<td><select data-emg="${i}" data-k="${c.k}" aria-label="${c.t}">${c.opt.map(o=>`<option ${o===r[c.k]?"selected":""}>${o}</option>`).join("")}</select></td>`
+  ).join("")}<td><button class="ghost act tiny" data-del="${i}" aria-label="刪除這一列">✕</button></td></tr>`).join("");
+  $("#tblEmg").innerHTML=head+"<tbody>"+body+"</tbody>";
+}
+function renderSts(){
+  const rows=[];
+  const push=(label,R,L)=>{
+    const okR=isNum(R)||R===NR, okL=isNum(L)||L===NR; if(!okR||!okL) return;
+    const rv=R===NR?0:R, lv=L===NR?0:L, hi=Math.max(rv,lv), lo=Math.min(rv,lv);
+    if(hi<=0) return;
+    rows.push({label,R:fmt(R),L:fmt(L),drop:Math.round((1-lo/hi)*1000)/10,side:lv<rv?"L":"R"});
+  };
+  state.motor.filter(r=>r.distal).forEach(r=>push(`${r.nerve} ${r.site} CMAP`,r.amp.R,r.amp.L));
+  state.sensory.forEach(r=>push(`${r.key} SNAP`,r.amp.R,r.amp.L));
+  if(!rows.length){ $("#stsBox").innerHTML=`<span style="color:var(--ink-2)">還沒有可比對的兩側數值。</span>`; return; }
+  const th=NV.misc.stsDrop;
+  $("#stsBox").innerHTML=`<table><thead><tr><th>項目</th><th>R</th><th>L</th><th>掉幅</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td>${r.label}</td><td>${r.R}</td><td>${r.L}</td><td class="${r.drop>=th?"drp":""}">${r.drop}% ↓${r.side}</td></tr>`).join("")+
+    `</tbody></table><p class="hint" style="margin:10px 0 0">掉幅 ≥ ${th}% 標紅(門檻可調)。</p>`;
+}
+function renderVerify(){
+  buildTable($("#tblMotor"),"m",state.motor,MOTOR_FIELDS,motorAbn);
+  buildTable($("#tblSensory"),"s",state.sensory,SENS_FIELDS,sensAbn);
+  renderEmg(); renderSts();
+}
+
+/* =======================================================================
+   ANALYSIS
+   ======================================================================= */
+function analyze(){
+  const A={motorDML:{},motorAmp:{},motorNCV:{},motorNR:{},fProl:{},fNormal:{},
+           sensDSL:{},sensAmp:{},sensNCV:{},sensNR:{},motorNormal:{},sensNormal:{},segments:[]};
+  const mark=(b,k,s,ref)=>{ A[b][k]=A[b][k]||{R:false,L:false,refs:[]}; A[b][k][s]=true; if(ref) A[b][k].refs.push(ref); };
+
+  state.motor.forEach((row,i)=>{
+    const nv=NV.motor[row.nerve]||{};
+    ["R","L"].forEach(side=>{
+      if(row.onset[side]===NR||row.amp[side]===NR) mark("motorNR",row.nerve,side,cellId("m",i,"onset",side));
+      if(row.distal){
+        if(isNum(row.onset[side])&&isNum(nv.dml)&&row.onset[side]>nv.dml) mark("motorDML",row.nerve,side,cellId("m",i,"onset",side));
+        if(isNum(row.amp[side])&&isNum(nv.amp)&&row.amp[side]<nv.amp) mark("motorAmp",row.nerve,side,cellId("m",i,"amp",side));
+      }
+      const c=segCut(nv,row.site);
+      if(isNum(row.ncv[side])&&isNum(c)&&row.ncv[side]<c){
+        mark("motorNCV",row.nerve,side,cellId("m",i,"ncv",side));
+        A.segments.push({nerve:row.nerve,site:row.site,side,ncv:row.ncv[side],cut:c});
+      }
+      if(isNum(row.f[side])&&isNum(nv.f)){
+        if(row.f[side]>nv.f) mark("fProl",row.nerve,side,cellId("m",i,"f",side));
+        else mark("fNormal",row.nerve,side,cellId("m",i,"f",side));
+      }
+    });
+  });
+  state.motor.forEach(row=>["R","L"].forEach(side=>{
+    const bad=["motorDML","motorAmp","motorNCV","motorNR"].some(b=>A[b][row.nerve]&&A[b][row.nerve][side]);
+    if(!bad&&(isNum(row.onset[side])||isNum(row.ncv[side]))){
+      A.motorNormal[row.nerve]=A.motorNormal[row.nerve]||{R:false,L:false,refs:[]}; A.motorNormal[row.nerve][side]=true; }
+  }));
+
+  state.sensory.forEach((row,i)=>{
+    const nv=NV.sensory[row.key]||NV.sensory[row.nerve]||{};
+    ["R","L"].forEach(side=>{
+      if(row.onset[side]===NR||row.amp[side]===NR){ mark("sensNR",row.nerve,side,cellId("s",i,"amp",side)); return; }
+      if(isNum(row.onset[side])&&isNum(nv.dsl)&&row.onset[side]>nv.dsl) mark("sensDSL",row.nerve,side,cellId("s",i,"onset",side));
+      if(isNum(row.amp[side])&&isNum(nv.amp)&&row.amp[side]<nv.amp) mark("sensAmp",row.nerve,side,cellId("s",i,"amp",side));
+      if(isNum(row.ncv[side])&&isNum(nv.ncv)&&row.ncv[side]<nv.ncv) mark("sensNCV",row.nerve,side,cellId("s",i,"ncv",side));
+    });
+  });
+  state.sensory.forEach(row=>["R","L"].forEach(side=>{
+    const bad=["sensDSL","sensAmp","sensNCV","sensNR"].some(b=>A[b][row.nerve]&&A[b][row.nerve][side]);
+    if(!bad&&isNum(row.amp[side])){ A.sensNormal[row.nerve]=A.sensNormal[row.nerve]||{R:false,L:false,refs:[]}; A.sensNormal[row.nerve][side]=true; }
+  }));
+  return A;
+}
+const bucketItems=b=>Object.keys(b).map(k=>({label:k.toLowerCase(),R:b[k].R,L:b[k].L,refs:b[k].refs||[]}));
+const line=(txt,refs)=>({txt,refs:refs||[]});
+const collect=items=>items.flatMap(i=>i.refs||[]);
+
+function buildFindings(){
+  const A=analyze(); const out=[];
+  const push=(arr,bucket,tpl)=>{ const it=bucketItems(A[bucket]); if(it.length) arr.push(line(tpl(phrase(it)),collect(it))); };
+
+  const m=[];
+  push(m,"motorDML",p=>`. prolonged distal motor latency over ${p}.`);
+  push(m,"motorAmp",p=>`. reduced CMAP amplitude over ${p}.`);
+  push(m,"motorNCV",p=>`. slowed MNCV over ${p}.`);
+  push(m,"motorNR", p=>`. no pick-up of ${p}.`);
+  push(m,"motorNormal",p=>`. normal MNCV study over ${p}.`);
+  if(m.length) out.push({sec:"Motor nerve conduction study",lines:m});
+
+  const s=[];
+  push(s,"sensDSL",p=>`. prolonged distal sensory latency over ${p}.`);
+  push(s,"sensAmp",p=>`. reduced SNAP amplitude over ${p}.`);
+  push(s,"sensNCV",p=>`. slowed SNCV over ${p}.`);
+  push(s,"sensNR", p=>`. no pick-up of ${p}.`);
+  push(s,"sensNormal",p=>`. normal SNCV study over ${p}.`);
+  if(s.length) out.push({sec:"Sensory nerve conduction study",lines:s});
+
+  const f=[];
+  push(f,"fProl",p=>`. prolonged latency over ${p}.`);
+  push(f,"fNormal",p=>`. normal F wave latency over ${p}.`);
+  if(f.length) out.push({sec:"F wave",lines:f});
+
+  const den=state.emg.filter(x=>x.fib!=="-"||x.psw!=="-");
+  const clean=state.emg.filter(x=>x.fib==="-"&&x.psw==="-");
+  const poly=state.emg.filter(x=>x.poly==="increased");
+  const scanty=state.emg.filter(x=>x.recruit==="scanty"||x.recruit==="no MUAP");
+  const nascent=state.emg.filter(x=>/nascent/i.test(x.remark||""));
+  const giant=state.emg.filter(x=>/giant/i.test(x.remark||""));
+  const nm=x=>`${x.side.toLowerCase()==="lt"?"left":"right"} ${x.muscle}`;
+  const list=a=>a.map(nm).join(" and ");
+  const e=[];
+  if(den.length) e.push(line(`. fibrillation and positive sharp wave noted at ${list(den)}.`));
+  if(poly.length) e.push(line(`. increased polyphasic waves at ${list(poly)}${poly.some(x=>x.recruit!=="normal")?" with decreased interference pattern":""}.`));
+  if(giant.length) e.push(line(`. giant wave noted at ${list(giant)}.`));
+  if(scanty.length) e.push(line(`. scanty MUAP was noted at ${list(scanty)}.`));
+  if(nascent.length) e.push(line(`. nascent wave noted at ${list(nascent)}.`));
+  if(clean.length&&!den.length) e.push(line(`. no fibrillation or positive sharp wave observed at ${list(clean)}.`));
+  if(e.length) out.push({sec:"EMG:",lines:e});
+
+  return {sections:out,A,emgFlags:{den,poly,scanty,nascent,giant}};
+}
+
+/* ---------------- conclusion candidates ---------------- */
+/* 針極取樣的肌肉屬於哪條神經 — 用來決定 denervation 這句話該不該掛在某個結論上 */
+const MUSCLE_NERVE = {
+  "apb":"Median","fpb":"Median","pt":"Median","fcr":"Median","fpl":"Median","pq":"Median",
+  "fdi":"Ulnar","adm":"Ulnar","fcu":"Ulnar","adp":"Ulnar",
+  "edc":"Radial","epl":"Radial","ecr":"Radial","ecu":"Radial","br":"Radial","brachioradialis":"Radial","triceps":"Radial","anconeus":"Radial",
+  "ta":"Peroneal","edb":"Peroneal","pl":"Peroneal","peroneus":"Peroneal",
+  "gastro":"Tibial","soleus":"Tibial","ah":"Tibial","fdl":"Tibial",
+  "deltoid":"Axillary","biceps":"Musculocutaneous"
+};
+function muscleNerve(name){
+  const n=(name||"").toLowerCase().replace(/[^a-z]/g,"");
+  for(const k in MUSCLE_NERVE) if(n===k||n.includes(k)) return MUSCLE_NERVE[k];
+  return null;
+}
+/** nerve 有給值時,只採計該神經支配的取樣肌肉;沒有相關肌肉就不加這句話 */
+function denervationSuffix(f, nerve){
+  const rel = arr => nerve ? arr.filter(m=>muscleNerve(m.muscle)===nerve) : arr;
+  const den=rel(f.den), re=rel(f.poly).concat(rel(f.nascent),rel(f.giant));
+  const sampled = nerve ? state.emg.filter(m=>muscleNerve(m.muscle)===nerve) : state.emg;
+  if(den.length && re.length) return "with electrophysiological evidence of active denervation and partial reinnervation";
+  if(den.length) return "with electrophysiological evidence of active denervation";
+  if(re.length) return "with electrophysiological evidence of partial reinnervation";
+  if(sampled.length) return "without electrophysiological evidence of active denervation";
+  return "";
+}
+const sideOf=e=> !e?null : (e.R&&e.L?"bilateral": e.R?"right": e.L?"left":null);
+
+function buildCandidates(A,flags){
+  const cands=[];
+  const tail=(s,nerve)=>{ const sfx=denervationSuffix(flags,nerve||null);
+    return `These findings showed ${s}${sfx?", "+sfx:""}. Please correlate with clinical conditions.`; };
+
+  const medDML=sideOf(A.motorDML["Median"]);
+  const medSens=sideOf(A.sensDSL["Median"])||sideOf(A.sensNCV["Median"])||sideOf(A.sensAmp["Median"]);
+  const ulnarClean=!A.motorDML["Ulnar"]&&!A.sensDSL["Ulnar"];
+  if(medDML&&ulnarClean){
+    cands.push({strong:!!medSens,
+      txt:tail(`${medDML} median neuropathy at wrist level, compatible with ${medDML} carpal tunnel syndrome`,"Median"),
+      why:`median 遠端運動潛時超過 ${NV.motor.Median.dml} ms(${medDML}),ulnar 於腕部正常;${medSens?`合併 median 感覺異常(${medSens}),跨腕段定位成立`:"感覺傳導未見異常,定位證據較弱"}`});
+  }
+  const acrossElbow=A.segments.filter(x=>x.nerve==="Ulnar"&&/above|across|elbow/i.test(x.site));
+  if(acrossElbow.length){
+    const s=sideWord(acrossElbow.some(x=>x.side==="R"),acrossElbow.some(x=>x.side==="L"));
+    cands.push({strong:true,txt:tail(`${s} ulnar neuropathy at elbow level`,"Ulnar"),
+      why:`跨肘節段 MNCV ${acrossElbow.map(x=>x.ncv).join(", ")} m/s,低於 cut-off ${acrossElbow[0].cut}`});
+  }
+  const radMotorBad=A.motorNR["Radial"]||A.motorNCV["Radial"]||A.motorAmp["Radial"]||A.motorDML["Radial"];
+  if(radMotorBad){
+    const s=sideOf(radMotorBad);
+    const radSensBad=A.sensAmp["Radial"]||A.sensNR["Radial"];
+    const spiral=state.motor.some(r=>r.nerve==="Radial"&&/spiral/i.test(r.site));
+    cands.push({strong:!!(radSensBad&&spiral),
+      txt:tail(`${s} radial nerve neuropathy at spiral groove level`,"Radial"),
+      why:`radial 運動反應異常(${s})${radSensBad?",且 radial SNAP 低於 "+NV.sensory.Radial.amp+" µV → 病灶在 spiral groove 或更遠端":";SNAP 正常時須考慮 posterior interosseous 或更近端病灶"}`});
+  }
+  const abn=new Set();
+  ["motorDML","motorAmp","motorNCV","sensDSL","sensAmp","sensNCV"].forEach(b=>
+    Object.keys(A[b]).forEach(n=>{ if(A[b][n].R) abn.add(n+"-R"); if(A[b][n].L) abn.add(n+"-L"); }));
+  if(abn.size>=NV.misc.polyNerveCount)
+    cands.push({strong:false,txt:tail("sensori-motor polyneuropathy, but lumbosacral radiculopathy could not be ruled out"),
+      why:`共 ${abn.size} 個神經／側別異常,分布廣泛;需與 diabetic polyneuropathy 等病因併同臨床判斷`});
+  if(flags.den.length&&abn.size===0)
+    cands.push({strong:false,txt:tail("radiculopathy, please consider clinical myotomal distribution"),
+      why:"NCS 正常但針極出現去神經電位 → 病灶可能在 root 或 NCS 未涵蓋節段"});
+  if(abn.size===0&&!flags.den.length)
+    cands.push({strong:true,txt:"These findings showed nearly normal NCV results. Please correlate with clinical conditions.",
+      why:"所有項目均在 cut-off 範圍內"});
+  if(!cands.length)
+    cands.push({strong:false,txt:tail("abnormal findings as described above"),why:"有異常但不符合內建型態規則,請自行判讀"});
+  return cands;
+}
+
+/* =======================================================================
+   RENDER report
+   ======================================================================= */
+let lastFindingsText="";
+function renderReport(){
+  const {sections,A,emgFlags}=buildFindings();
+  $("#findList").innerHTML = sections.map(s=>
+    `<li class="sec">${s.sec}</li>`+s.lines.map(l=>`<li class="line" ${l.refs.length?`data-refs="${l.refs.join(",")}"`:""}>${l.txt}</li>`).join("")
+  ).join("") || `<li class="line" style="color:var(--ink-2)">還沒有資料。先到「匯入報告」解析。</li>`;
+  lastFindingsText = sections.map(s=>s.sec+"\n"+s.lines.map(l=>l.txt).join("\n")).join("\n");
+  const cands=buildCandidates(A,emgFlags);
+  $("#candList").innerHTML = cands.map((c,i)=>`
+    <div class="cand ${c.strong?"":"low"}">
+      <div class="cand-head"><div class="cand-txt">${c.txt}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="badge">${c.strong?"型態相符":"僅供參考"}</span>
+          <button class="ghost act tiny" data-cand="${i}">採用</button></div></div>
+      <div class="cand-why"><b>依據</b>${c.why}</div></div>`).join("");
+  window.__cands=cands;
+  updateFull();
+}
+function updateFull(){ $("#fullBox").value="Findings\n"+lastFindingsText+"\n\nConclusion\n"+$("#conclBox").value; }
+
+/* =======================================================================
+   NV editor
+   ======================================================================= */
+function renderNV(){
+  const mF=["dml","amp","ncv","f"];
+  $("#nvMotor").innerHTML=`<thead><tr><th>Nerve</th>${mF.map(f=>`<th>${NV_LABEL[f]}</th>`).join("")}</tr></thead><tbody>`+
+    Object.keys(NV.motor).map(n=>`<tr><td class="k">${n}</td>`+
+      mF.map(f=>`<td><input value="${NV.motor[n][f]??""}" data-nv="motor" data-n="${n}" data-f="${f}" aria-label="${n} ${f}"></td>`).join("")+`</tr>`).join("")+`</tbody>`;
+
+  const segRows=[];
+  Object.keys(NV.motor).forEach(n=>Object.keys(NV.motor[n].seg||{}).forEach(k=>segRows.push([n,k])));
+  $("#nvSeg").innerHTML=`<thead><tr><th>Nerve · site 關鍵字</th><th>Cut-off</th></tr></thead><tbody>`+
+    segRows.map(([n,k])=>`<tr><td class="k">${n} · ${k}<small>site 欄位含此字串時改用這個 cut-off</small></td>
+      <td><input value="${NV.motor[n].seg[k]}" data-nv="seg" data-n="${n}" data-f="${k}" aria-label="${n} ${k}"></td></tr>`).join("")+`</tbody>`;
+
+  const sF=["dsl","amp","ncv"];
+  $("#nvSensory").innerHTML=`<thead><tr><th>Nerve-Site</th>${sF.map(f=>`<th>${NV_LABEL[f]}</th>`).join("")}</tr></thead><tbody>`+
+    Object.keys(NV.sensory).map(n=>`<tr><td class="k">${n}${NV.sensory[n].note?`<small>${NV.sensory[n].note}</small>`:""}</td>`+
+      sF.map(f=>`<td><input value="${NV.sensory[n][f]??""}" data-nv="sensory" data-n="${n}" data-f="${f}" aria-label="${n} ${f}"></td>`).join("")+`</tr>`).join("")+`</tbody>`;
+
+  const misc=[["stsDrop","兩側振幅掉幅門檻 (%)"],["elbowDrop","跨肘 NCV 落差門檻 (m/s)"],["polyNerveCount","提示 polyneuropathy 的異常神經數"]];
+  $("#nvMisc").innerHTML=`<thead><tr><th>項目</th><th>值</th></tr></thead><tbody>`+
+    misc.map(([k,t])=>`<tr><td class="k">${t}</td><td><input value="${NV.misc[k]}" data-nv="misc" data-n="${k}" aria-label="${t}"></td></tr>`).join("")+`</tbody>`;
+}
+
+/* =======================================================================
+   EVENTS
+   ======================================================================= */
+function showMsg(el,text,cls){ el.className="msg "+cls; el.textContent=text; el.hidden=false; }
+$$(".tab").forEach(tab=>tab.addEventListener("click",()=>{
+  $$(".tab").forEach(t=>t.setAttribute("aria-selected",t===tab?"true":"false"));
+  $$(".panel").forEach(p=>p.hidden=(p.id!==tab.getAttribute("aria-controls")));
+  if(tab.id==="t3") renderReport();
+}));
+const goTab=id=>$("#"+id).click();
+
+const dz=$("#dropzone");
+dz.addEventListener("click",()=>$("#fileIn").click());
+dz.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("#fileIn").click(); }});
+dz.addEventListener("dragover",e=>{ e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave",()=>dz.classList.remove("over"));
+dz.addEventListener("drop",e=>{ e.preventDefault(); dz.classList.remove("over");
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+$("#fileIn").addEventListener("change",e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=""; });
+
+$("#btnParse").addEventListener("click",()=>{
+  const txt=$("#raw").value;
+  if(!txt.trim()){ showMsg($("#parseMsg"),"框裡沒有東西可以解析。","err"); return; }
+  state=parseReport(txt); renderVerify();
+  if(!(state.motor.length+state.sensory.length)){
+    showMsg($("#parseMsg"),"找不到數值列。請確認內容包含 Moto NCV Studies / Sensory NCV Studies 這兩段表格。","err"); return; }
+  showMsg($("#parseMsg"),`解析到 ${state.motor.length} 條運動、${state.sensory.length} 條感覺、${state.emg.length} 條 EMG。請到「核對數值」逐格確認,尤其是 EMG。`,"warn");
+  goTab("t2");
+});
+$("#btnClear").addEventListener("click",()=>{ $("#raw").value=""; $("#parseMsg").hidden=true; });
+$("#btnSample").addEventListener("click",()=>{ $("#raw").value=SAMPLE; showMsg($("#parseMsg"),"已載入去識別化範例,按「解析」試跑。","ok"); });
+
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.classList.contains("cell")){
+    const {kind,i,f,s}=t.dataset;
+    const arr=kind==="m"?state.motor:state.sensory;
+    const raw=t.value.trim();
+    arr[i][f][s]= raw==="" ? null : (/^nr$/i.test(raw)||/no\s*pick/i.test(raw) ? NR : parseFloat(raw));
+    const abn=kind==="m"?motorAbn(arr[i],f,s):sensAbn(arr[i],f,s);
+    document.getElementById(cellId(kind,i,f,s)).classList.toggle("abn",!!abn);
+    renderSts();
+  }
+  if(t.dataset.emg!==undefined) state.emg[t.dataset.emg][t.dataset.k]=t.value;
+  if(t.dataset.nv){
+    const {nv,n,f}=t.dataset;
+    const v=t.value.trim()===""?null:parseFloat(t.value);
+    if(nv==="misc") NV.misc[n]=v; else if(nv==="seg") NV.motor[n].seg[f]=v; else NV[nv][n][f]=v;
+    renderVerify();
+  }
+  if(t.id==="conclBox") updateFull();
+});
+document.addEventListener("change",e=>{ if(e.target.dataset.emg!==undefined) state.emg[e.target.dataset.emg][e.target.dataset.k]=e.target.value; });
+document.addEventListener("click",e=>{
+  const del=e.target.dataset.del;
+  if(del!==undefined){ state.emg.splice(+del,1); renderEmg(); }
+  const c=e.target.dataset.cand;
+  if(c!==undefined){ const b=$("#conclBox"); b.value=(b.value.trim()?b.value.trim()+"\n":"")+window.__cands[+c].txt; updateFull(); }
+});
+$("#btnAddEmg").addEventListener("click",()=>{
+  state.emg.push({muscle:"",side:"Lt",insert:"normal",fib:"-",psw:"-",fas:"-",poly:"normal",recruit:"normal",remark:""});
+  renderEmg();
+});
+$("#btnRecalc").addEventListener("click",renderReport);
+$("#btnClearConcl").addEventListener("click",()=>{ $("#conclBox").value=""; updateFull(); });
+
+$("#findList").addEventListener("mouseover",e=>{
+  const li=e.target.closest("li.line"); if(!li||!li.dataset.refs) return;
+  li.dataset.refs.split(",").forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add("trace"); });
+  $("#traceNote").textContent="已在「核對數值」標出這句話用到的欄位。";
+});
+$("#findList").addEventListener("mouseout",()=>{
+  $$("td.trace").forEach(td=>td.classList.remove("trace"));
+  $("#traceNote").textContent="規則來源:正常值設定分頁。";
+});
+
+async function copyText(s){
+  try{ await navigator.clipboard.writeText(s); }
+  catch{ const ta=document.createElement("textarea"); ta.value=s; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  const m=$("#copyMsg"); m.hidden=false; setTimeout(()=>m.hidden=true,1800);
+}
+$("#btnCopyFind").addEventListener("click",()=>copyText(lastFindingsText));
+$("#btnCopyConcl").addEventListener("click",()=>copyText($("#conclBox").value));
+$("#btnCopyAll").addEventListener("click",()=>copyText($("#fullBox").value));
+
+$("#btnExportNV").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(NV,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="ncs-normal-values.json"; a.click();
+  URL.revokeObjectURL(a.href); showMsg($("#nvMsg"),"已下載 ncs-normal-values.json。","ok");
+});
+$("#btnImportNV").addEventListener("click",()=>$("#fileNV").click());
+$("#fileNV").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const obj=JSON.parse(await f.text());
+    if(!obj.motor||!obj.sensory) throw new Error("缺少 motor 或 sensory 欄位");
+    NV=obj; if(!NV.misc) NV.misc=structuredClone(DEFAULT_NV.misc);
+    Object.keys(NV.motor).forEach(n=>{ if(!NV.motor[n].seg) NV.motor[n].seg={}; });
+    renderNV(); renderVerify(); showMsg($("#nvMsg"),"設定已載入。","ok");
+  }catch(err){ showMsg($("#nvMsg"),"讀不到這個檔:"+err.message,"err"); }
+  e.target.value="";
+});
+$("#btnResetNV").addEventListener("click",()=>{
+  NV=structuredClone(DEFAULT_NV); renderNV(); renderVerify(); showMsg($("#nvMsg"),"已回復內建預設值。","warn");
+});
+
+const SAMPLE=`NEEDLE ELECTROMYOGRAPHY
+Muscle Insert Activity Resting Voluntary motor units Recruitment
+EDC-Lt normal ++ ++ - <5k + -3 nascent wave
+EPL-Lt normal ++ ++ - scanty MUAP
+Moto NCV Studies
+Nerve-Site Onset latency(ms) Amplitude (mV) Distance (mm) NCV (m/s) F-wave (ms)
+R L R L R L R L R L
+Median Wrist 5.1 4.1 4.9 4.1 70 70 27.0 26.4
+Median Elbow 8.6 7.6 4.2 3.9 200 200 57 57
+Ulnar Wrist 2.6 2.7 9.0 7.6 70 70 25.0 25.6
+Ulnar Below elbow 6.0 6.5 8.3 7.4 200 200 59 53
+Ulnar Above elbow 7.7 8.2 8.2 7.2 100 100 59 59
+Radial forearm 2.2 no pick up 8.9 no pick up 70 70
+Radial dist spiral gr 5.3 no pick up 8.2 no pick up 155 155 50 no pick up
+Sensory NCV Studies
+Nerve-Site Onset latency(ms) Amplitude (uV) Distance (mm) NCV (m/s)
+R L R L R L R L
+Median-Plam 1.3 1.3 31 32 80 80 63 62
+Median-Wrist 3.3 2.9 26 34 75 75 37 47
+Median-Elbow 6.5 6.3 21 21 200 200 63 59
+Ulnar-Wrist 2.3 2.0 42 38 120 120 52 59
+Radial 2.2 2.3 17 5 130 130 59 57
+H reflex`;
+
+renderNV();
+renderReport();
+</script>
+</body>
+</html>
